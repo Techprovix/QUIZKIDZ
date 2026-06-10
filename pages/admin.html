@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Panel — QuizKids</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="../css/main.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    body { min-height: 100vh; }
+    .admin-layout { display: flex; min-height: 100vh; }
+
+    /* Sidebar */
+    .admin-sidebar {
+      width: 240px; flex-shrink: 0;
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border-color);
+      padding: 24px 0; position: fixed;
+      top: 0; left: 0; bottom: 0;
+      z-index: 100; display: flex; flex-direction: column;
+    }
+    .admin-sidebar .sidebar-logo { padding: 0 20px 28px; border-bottom: 1px solid var(--border-color); margin-bottom: 16px; }
+    .admin-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3);
+      color: #f87171; padding: 4px 12px; border-radius: 100px;
+      font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+      margin-top: 8px;
+    }
+    .admin-nav { flex: 1; overflow-y: auto; padding: 0 12px; }
+    .admin-nav-lbl { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); padding: 0 10px; margin: 16px 0 8px; }
+    .admin-nav a {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; border-radius: var(--radius-sm);
+      font-size: 0.86rem; font-weight: 500; color: var(--text-secondary);
+      transition: var(--transition); margin-bottom: 2px; text-decoration: none;
+    }
+    .admin-nav a:hover { background: rgba(255,255,255,0.05); color: var(--text-primary); }
+    .admin-nav a.active { background: rgba(239,68,68,0.1); color: #f87171; border: 1px solid rgba(239,68,68,0.2); }
+    .admin-nav a .ai { font-size: 1rem; width: 18px; text-align: center; }
+    .admin-sidebar-footer { padding: 16px 12px; border-top: 1px solid var(--border-color); }
+    .admin-sidebar-footer a { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: var(--radius-sm); color: var(--text-secondary); font-size: 0.86rem; transition: var(--transition); text-decoration: none; }
+    .admin-sidebar-footer a:hover { background: rgba(255,255,255,0.05); color: var(--text-primary); }
+
+    /* Main */
+    .admin-main { margin-left: 240px; flex: 1; min-width: 0; }
+    .admin-topbar {
+      padding: 20px 32px; border-bottom: 1px solid var(--border-color);
+      background: rgba(3,7,18,0.9); backdrop-filter: blur(20px);
+      position: sticky; top: 0; z-index: 50;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .admin-topbar h1 { font-size: 1.2rem; font-weight: 700; }
+    .admin-topbar p { font-size: 0.82rem; color: var(--text-secondary); margin-top: 2px; }
+
+    .admin-content { padding: 32px; }
+
+    /* Panel sections */
+    .panel-section { display: none; }
+    .panel-section.active { display: block; }
+
+    /* Stats */
+    .admin-stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 32px; }
+    .astat {
+      background: var(--bg-card); border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg); padding: 22px;
+    }
+    .astat .as-icon { font-size: 1.8rem; margin-bottom: 10px; }
+    .astat .as-val { font-family: var(--font-display); font-size: 2rem; font-weight: 800; }
+    .astat .as-lbl { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 4px; }
+
+    /* Grid */
+    .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
+    .admin-card {
+      background: var(--bg-card); border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg); padding: 24px;
+    }
+    .admin-card h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .chart-wrap { height: 200px; position: relative; }
+
+    /* Tables */
+    .data-table { width: 100%; border-collapse: collapse; }
+    .data-table th { padding: 10px 16px; text-align: left; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); border-bottom: 1px solid var(--border-color); }
+    .data-table td { padding: 12px 16px; font-size: 0.85rem; border-bottom: 1px solid rgba(255,255,255,0.04); }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .action-btn { padding: 5px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: var(--transition); border: 1px solid; }
+    .action-btn.edit { background: rgba(59,130,246,0.1); border-color: rgba(59,130,246,0.3); color: #60a5fa; }
+    .action-btn.delete { background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); color: #f87171; }
+    .action-btn:hover { filter: brightness(1.2); }
+
+    /* Form (Add Question) */
+    .qform { display: grid; gap: 16px; }
+    .fgroup label { display: block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-secondary); margin-bottom: 6px; }
+    .fgroup input, .fgroup select, .fgroup textarea {
+      width: 100%; padding: 11px 14px;
+      background: rgba(255,255,255,0.05); border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm); color: var(--text-primary);
+      font-family: var(--font-body); font-size: 0.9rem; outline: none;
+      transition: var(--transition);
+    }
+    .fgroup input:focus, .fgroup select:focus, .fgroup textarea:focus { border-color: var(--brand-primary); }
+    .fgroup textarea { resize: vertical; min-height: 80px; }
+    .frow { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .options-inputs { display: grid; gap: 8px; }
+    .opt-input-row { display: flex; align-items: center; gap: 10px; }
+    .opt-label-tag { width: 28px; height: 28px; border-radius: 6px; background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.82rem; flex-shrink: 0; }
+    .correct-radio { accent-color: var(--brand-primary); cursor: pointer; }
+    .form-submit { padding: 12px 28px; background: var(--brand-primary); color: #fff; border: none; border-radius: 100px; font-weight: 700; font-family: var(--font-display); cursor: pointer; transition: var(--transition); }
+    .form-submit:hover { background: var(--brand-secondary); transform: translateY(-1px); }
+
+    /* Students table */
+    .search-bar { display: flex; gap: 12px; margin-bottom: 20px; }
+    .search-input { flex: 1; padding: 10px 16px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-family: var(--font-body); font-size: 0.9rem; outline: none; }
+    .search-input:focus { border-color: var(--brand-primary); }
+
+    /* Alert */
+    .alert { padding: 14px 18px; border-radius: var(--radius-md); font-size: 0.875rem; margin-bottom: 20px; }
+    .alert-warning { background: rgba(250,204,21,0.08); border: 1px solid rgba(250,204,21,0.3); color: #facc15; }
+
+    @media (max-width: 1024px) {
+      .admin-stats { grid-template-columns: repeat(2,1fr); }
+      .admin-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 768px) {
+      .admin-sidebar { width: 0; transform: translateX(-100%); }
+      .admin-main { margin-left: 0; }
+      .admin-stats { grid-template-columns: 1fr 1fr; }
+      .admin-content { padding: 16px; }
+      .frow { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="bg-canvas"><canvas id="bgCanvas"></canvas></div>
+
+<div class="admin-layout">
+  <!-- SIDEBAR -->
+  <aside class="admin-sidebar">
+    <div class="sidebar-logo">
+      <a href="../index.html" class="logo"><span class="logo-icon">⚡</span><span class="logo-text">Quiz<span class="logo-accent">Kids</span></span></a>
+      <div class="admin-badge">⚙️ Admin Panel</div>
+    </div>
+    <nav class="admin-nav">
+      <div class="admin-nav-lbl">Overview</div>
+      <a href="#" class="active" onclick="showPanel('overview',this)"><span class="ai">📊</span> Dashboard</a>
+      <a href="#" onclick="showPanel('analytics',this)"><span class="ai">📈</span> Analytics</a>
+      <div class="admin-nav-lbl">Content</div>
+      <a href="#" onclick="showPanel('questions',this)"><span class="ai">❓</span> Questions</a>
+      <a href="#" onclick="showPanel('addQuestion',this)"><span class="ai">➕</span> Add Question</a>
+      <div class="admin-nav-lbl">Users</div>
+      <a href="#" onclick="showPanel('students',this)"><span class="ai">👥</span> Students</a>
+      <a href="#" onclick="showPanel('reports',this)"><span class="ai">📋</span> Reports</a>
+    </nav>
+    <div class="admin-sidebar-footer">
+      <a href="dashboard.html"><span>🏠</span> Student View</a>
+      <a href="#" onclick="Auth.logout()" style="color:#f87171"><span>🚪</span> Logout</a>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="admin-main">
+    <div class="admin-topbar">
+      <div>
+        <h1 id="panelTitle">Admin Dashboard</h1>
+        <p id="panelSub">Overview of platform activity</p>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <span id="adminUserName" style="font-size:0.85rem;color:var(--text-secondary)"></span>
+        <a href="quiz.html" class="btn-primary" style="font-size:0.82rem;padding:8px 16px">Preview Quiz</a>
+      </div>
+    </div>
+
+    <div class="admin-content">
+
+      <!-- ── OVERVIEW PANEL ── -->
+      <div class="panel-section active" id="panel-overview">
+        <div class="admin-stats">
+          <div class="astat"><div class="as-icon">👥</div><div class="as-val" id="sTotalStudents">0</div><div class="as-lbl">Total Students</div></div>
+          <div class="astat"><div class="as-icon">❓</div><div class="as-val">1,847</div><div class="as-lbl">Questions</div></div>
+          <div class="astat"><div class="as-icon">🎯</div><div class="as-val" id="sTotalQuizzes">0</div><div class="as-lbl">Quizzes Taken</div></div>
+          <div class="astat"><div class="as-icon">📈</div><div class="as-val">73%</div><div class="as-lbl">Avg Pass Rate</div></div>
+        </div>
+
+        <div class="admin-grid">
+          <div class="admin-card">
+            <h3>📊 Daily Active Students <span style="font-size:0.75rem;color:var(--text-muted)">Last 7 days</span></h3>
+            <div class="chart-wrap"><canvas id="dailyChart"></canvas></div>
+          </div>
+          <div class="admin-card">
+            <h3>🎯 Quizzes by Subject</h3>
+            <div class="chart-wrap"><canvas id="subjectChart"></canvas></div>
+          </div>
+        </div>
+
+        <div class="admin-card">
+          <h3>🕐 Recent Activity</h3>
+          <table class="data-table" id="activityTable">
+            <thead><tr><th>Student</th><th>Subject</th><th>Score</th><th>Time</th><th>Status</th></tr></thead>
+            <tbody id="activityBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── ANALYTICS PANEL ── -->
+      <div class="panel-section" id="panel-analytics">
+        <div class="admin-grid">
+          <div class="admin-card" style="grid-column:span 2">
+            <h3>📈 Weekly Performance Trend</h3>
+            <div class="chart-wrap" style="height:280px"><canvas id="trendChart"></canvas></div>
+          </div>
+          <div class="admin-card">
+            <h3>📚 Subject Difficulty Spread</h3>
+            <div class="chart-wrap"><canvas id="diffChart"></canvas></div>
+          </div>
+          <div class="admin-card">
+            <h3>🗺️ Students by State</h3>
+            <div id="stateList" style="display:flex;flex-direction:column;gap:10px;max-height:200px;overflow-y:auto"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── QUESTIONS PANEL ── -->
+      <div class="panel-section" id="panel-questions">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+          <h2 style="font-size:1.2rem;font-weight:700">Question Bank</h2>
+          <button class="btn-primary" onclick="showPanel('addQuestion', document.querySelector('[onclick*=addQuestion]'))">+ Add Question</button>
+        </div>
+        <div class="search-bar">
+          <input class="search-input" id="qSearch" placeholder="Search questions..." oninput="filterQuestions()"/>
+          <select class="search-input" style="max-width:160px" id="qSubjectFilter" onchange="filterQuestions()">
+            <option value="">All Subjects</option>
+            <option value="mathematics">Mathematics</option>
+            <option value="biology">Biology</option>
+            <option value="physics">Physics</option>
+            <option value="english">English</option>
+            <option value="chemistry">Chemistry</option>
+          </select>
+        </div>
+        <div class="admin-card" style="padding:0">
+          <table class="data-table" id="questionsTable">
+            <thead><tr><th style="width:40px">#</th><th>Question</th><th>Subject</th><th>Difficulty</th><th>Actions</th></tr></thead>
+            <tbody id="questionsBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── ADD QUESTION PANEL ── -->
+      <div class="panel-section" id="panel-addQuestion">
+        <div style="max-width:680px">
+          <h2 style="font-size:1.2rem;font-weight:700;margin-bottom:24px">Add New Question</h2>
+          <div class="alert alert-warning">ℹ️ In production, questions are saved to Firebase Firestore. Currently saving to localStorage for demo.</div>
+          <div class="admin-card">
+            <div class="qform" id="addQForm">
+              <div class="frow">
+                <div class="fgroup">
+                  <label>Subject</label>
+                  <select id="aqSubject">
+                    <option value="mathematics">Mathematics</option>
+                    <option value="english">English Language</option>
+                    <option value="physics">Physics</option>
+                    <option value="chemistry">Chemistry</option>
+                    <option value="biology">Biology</option>
+                    <option value="economics">Economics</option>
+                    <option value="government">Government</option>
+                    <option value="geography">Geography</option>
+                  </select>
+                </div>
+                <div class="fgroup">
+                  <label>Difficulty</label>
+                  <select id="aqDifficulty">
+                    <option value="easy">Easy</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="hard">Hard</option>
+                  </select>
+                </div>
+              </div>
+              <div class="fgroup">
+                <label>Exam Type</label>
+                <select id="aqExamType">
+                  <option value="waec">WAEC</option>
+                  <option value="jamb">JAMB/UTME</option>
+                  <option value="neco">NECO</option>
+                  <option value="practice">General Practice</option>
+                </select>
+              </div>
+              <div class="fgroup">
+                <label>Question Text</label>
+                <textarea id="aqQuestion" rows="3" placeholder="Enter the question here..."></textarea>
+              </div>
+              <div class="fgroup">
+                <label>Answer Options (select the correct answer with the radio button)</label>
+                <div class="options-inputs">
+                  <div class="opt-input-row">
+                    <div class="opt-label-tag">A</div>
+                    <input type="text" id="aqOpt0" placeholder="Option A"/>
+                    <input type="radio" name="aqCorrect" value="0" class="correct-radio" title="Correct answer"/>
+                  </div>
+                  <div class="opt-input-row">
+                    <div class="opt-label-tag">B</div>
+                    <input type="text" id="aqOpt1" placeholder="Option B"/>
+                    <input type="radio" name="aqCorrect" value="1" class="correct-radio"/>
+                  </div>
+                  <div class="opt-input-row">
+                    <div class="opt-label-tag">C</div>
+                    <input type="text" id="aqOpt2" placeholder="Option C"/>
+                    <input type="radio" name="aqCorrect" value="2" class="correct-radio"/>
+                  </div>
+                  <div class="opt-input-row">
+                    <div class="opt-label-tag">D</div>
+                    <input type="text" id="aqOpt3" placeholder="Option D"/>
+                    <input type="radio" name="aqCorrect" value="3" class="correct-radio"/>
+                  </div>
+                </div>
+              </div>
+              <div class="fgroup">
+                <label>Explanation / Solution</label>
+                <textarea id="aqExplanation" rows="3" placeholder="Explain why the correct answer is correct. Show working for maths."></textarea>
+              </div>
+              <div style="display:flex;gap:12px">
+                <button class="form-submit" onclick="saveQuestion()">💾 Save Question</button>
+                <button class="btn-ghost" style="border-radius:100px;padding:12px 24px" onclick="clearQForm()">Clear</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── STUDENTS PANEL ── -->
+      <div class="panel-section" id="panel-students">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+          <h2 style="font-size:1.2rem;font-weight:700">Student Management</h2>
+          <span id="studentCount" style="font-size:0.85rem;color:var(--text-muted)">Loading...</span>
+        </div>
+        <div class="search-bar">
+          <input class="search-input" id="studentSearch" placeholder="Search by name, email, or state..." oninput="renderStudents()"/>
+        </div>
+        <div class="admin-card" style="padding:0">
+          <table class="data-table">
+            <thead><tr><th>Name</th><th>Email</th><th>Class</th><th>State</th><th>XP</th><th>Quizzes</th><th>Actions</th></tr></thead>
+            <tbody id="studentsBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── REPORTS PANEL ── -->
+      <div class="panel-section" id="panel-reports">
+        <h2 style="font-size:1.2rem;font-weight:700;margin-bottom:24px">Performance Reports</h2>
+        <div class="admin-grid">
+          <div class="admin-card">
+            <h3>📊 Score Distribution</h3>
+            <div class="chart-wrap"><canvas id="distChart"></canvas></div>
+          </div>
+          <div class="admin-card">
+            <h3>📅 Registration Growth</h3>
+            <div class="chart-wrap"><canvas id="regChart"></canvas></div>
+          </div>
+        </div>
+        <div class="admin-card">
+          <h3>💡 Insights</h3>
+          <div style="display:flex;flex-direction:column;gap:14px" id="insightsList">
+            <div style="padding:14px;background:rgba(22,163,74,0.06);border:1px solid rgba(22,163,74,0.2);border-radius:var(--radius-sm)">
+              📈 <strong>Mathematics</strong> has the highest engagement — 34% of all quizzes taken.
+            </div>
+            <div style="padding:14px;background:rgba(250,204,21,0.06);border:1px solid rgba(250,204,21,0.2);border-radius:var(--radius-sm)">
+              ⚠️ <strong>Chemistry</strong> has the lowest average score (52%). Consider adding more practice questions.
+            </div>
+            <div style="padding:14px;background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.2);border-radius:var(--radius-sm)">
+              🏆 <strong>Lagos State</strong> leads in registrations with 18% of total students.
+            </div>
+            <div style="padding:14px;background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.2);border-radius:var(--radius-sm)">
+              🔥 Average daily streak across active users is <strong>7.3 days</strong>.
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /admin-content -->
+  </main>
+</div>
+
+<script src="../js/main.js"></script>
+<script>
+// ── Auth guard — admin only ──
+const user = Auth.getUser();
+if (!user) { location.href = 'auth.html'; }
+// For demo: allow any logged-in user to see admin (in prod check user.isAdmin)
+document.getElementById('adminUserName').textContent = user ? user.name : '';
+
+// ── Panel switching ──
+function showPanel(name, el) {
+  document.querySelectorAll('.panel-section').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  document.querySelectorAll('.admin-nav a').forEach(a => a.classList.remove('active'));
+  if (el) el.classList.add('active');
+  const titles = { overview:'Admin Dashboard', analytics:'Analytics', questions:'Question Bank', addQuestion:'Add Question', students:'Students', reports:'Reports' };
+  const subs = { overview:'Platform activity at a glance', analytics:'Detailed performance analytics', questions:'Manage question bank', addQuestion:'Add new questions to the bank', students:'Manage registered students', reports:'Generated reports & insights' };
+  document.getElementById('panelTitle').textContent = titles[name] || name;
+  document.getElementById('panelSub').textContent = subs[name] || '';
+}
+
+// ── Load stats ──
+const allUsers = JSON.parse(localStorage.getItem('qk_users') || '[]');
+const totalQuizzes = allUsers.reduce((s, u) => s + (u.quizHistory ? u.quizHistory.length : 0), 0);
+document.getElementById('sTotalStudents').textContent = allUsers.length;
+document.getElementById('sTotalQuizzes').textContent = totalQuizzes + 247; // add base
+
+// ── Charts ──
+const chartDefaults = { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color:'#94a3b8', font:{ size:11 } } } }, scales: { x: { grid: { color:'rgba(255,255,255,0.05)' }, ticks: { color:'#64748b', font:{ size:10 } } }, y: { grid: { color:'rgba(255,255,255,0.05)' }, ticks: { color:'#64748b', font:{ size:10 } } } } };
+
+// Daily Active
+new Chart(document.getElementById('dailyChart'), {
+  type: 'bar',
+  data: { labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], datasets: [{ label:'Active Students', data: [320,480,390,520,470,680,590], backgroundColor:'rgba(22,163,74,0.7)', borderRadius: 6 }] },
+  options: { ...chartDefaults }
+});
+
+// Subject breakdown
+new Chart(document.getElementById('subjectChart'), {
+  type: 'doughnut',
+  data: { labels: ['Math','English','Biology','Physics','Chemistry','Others'], datasets: [{ data: [34,22,18,12,8,6], backgroundColor: ['#f59e0b','#3b82f6','#10b981','#8b5cf6','#ef4444','#64748b'], borderWidth: 0 }] },
+  options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ labels:{ color:'#94a3b8', font:{ size:11 } } } } }
+});
+
+// Trend chart
+const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul'];
+new Chart(document.getElementById('trendChart'), {
+  type: 'line',
+  data: { labels: months, datasets: [
+    { label:'Avg Score', data: [62,65,68,71,70,74,73], borderColor:'#16a34a', backgroundColor:'rgba(22,163,74,0.1)', tension:0.4, fill:true },
+    { label:'Pass Rate', data: [58,62,66,69,68,72,73], borderColor:'#facc15', backgroundColor:'rgba(250,204,21,0.05)', tension:0.4 }
+  ]},
+  options: { ...chartDefaults }
+});
+
+// Difficulty spread
+new Chart(document.getElementById('diffChart'), {
+  type: 'bar',
+  data: { labels: ['Math','Eng','Bio','Phy','Chem'], datasets: [
+    { label:'Easy', data: [45,38,52,30,25], backgroundColor:'rgba(34,197,94,0.7)', borderRadius:4 },
+    { label:'Medium', data: [35,42,30,40,45], backgroundColor:'rgba(250,204,21,0.7)', borderRadius:4 },
+    { label:'Hard', data: [20,20,18,30,30], backgroundColor:'rgba(239,68,68,0.7)', borderRadius:4 }
+  ]},
+  options: { ...chartDefaults, scales: { ...chartDefaults.scales, x: { ...chartDefaults.scales.x, stacked:true }, y: { ...chartDefaults.scales.y, stacked:true } } }
+});
+
+// Score distribution
+new Chart(document.getElementById('distChart'), {
+  type: 'bar',
+  data: { labels: ['0-20','21-40','41-60','61-80','81-100'], datasets: [{ label:'Students', data: [45,120,380,520,280], backgroundColor: ['#ef4444','#f97316','#facc15','#22c55e','#16a34a'].map(c=>c+'bb'), borderRadius:6 }] },
+  options: { ...chartDefaults }
+});
+
+// Registration growth
+new Chart(document.getElementById('regChart'), {
+  type: 'line',
+  data: { labels: months, datasets: [{ label:'New Registrations', data: [420,580,720,890,1100,1340,1600], borderColor:'#8b5cf6', backgroundColor:'rgba(139,92,246,0.1)', tension:0.4, fill:true }] },
+  options: { ...chartDefaults }
+});
+
+// State list
+const stateData = [['Lagos',18],['Kano',12],['Anambra',9],['Rivers',8],['Ogun',7],['Oyo',6],['Kaduna',5],['Others',35]];
+document.getElementById('stateList').innerHTML = stateData.map(([s,p]) => `
+  <div style="display:flex;align-items:center;gap:10px;font-size:0.82rem">
+    <span style="width:80px;color:var(--text-secondary)">${s}</span>
+    <div style="flex:1;height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden">
+      <div style="width:${p}%;height:100%;background:var(--brand-primary);border-radius:3px"></div>
+    </div>
+    <span style="color:var(--text-muted);width:30px">${p}%</span>
+  </div>
+`).join('');
+
+// ── Activity feed ──
+const ACTIVITY = [
+  { name:'Chukwuemeka O.', subject:'Mathematics', score:92, time:'2 min ago', pass:true },
+  { name:'Aminat Y.', subject:'Biology', score:74, time:'5 min ago', pass:true },
+  { name:'Emeka I.', subject:'Physics', score:48, time:'12 min ago', pass:false },
+  { name:'Fatima B.', subject:'English', score:88, time:'18 min ago', pass:true },
+  { name:'David A.', subject:'Chemistry', score:61, time:'24 min ago', pass:true },
+  { name:'Grace E.', subject:'Economics', score:35, time:'31 min ago', pass:false },
+  { name:'Ibrahim M.', subject:'Government', score:79, time:'40 min ago', pass:true },
+];
+document.getElementById('activityBody').innerHTML = ACTIVITY.map(a => `
+  <tr>
+    <td><strong>${a.name}</strong></td>
+    <td>${a.subject}</td>
+    <td style="font-weight:700;color:${a.score>=70?'#4ade80':a.score>=50?'#facc15':'#f87171'}">${a.score}%</td>
+    <td style="color:var(--text-muted);font-size:0.8rem">${a.time}</td>
+    <td><span class="badge ${a.pass ? 'badge-green' : 'badge-red'}">${a.pass ? 'PASS' : 'FAIL'}</span></td>
+  </tr>
+`).join('');
+
+// ── Questions table ──
+const DEMO_QUESTIONS = [
+  { q:'If 2x + 3 = 11, find x.', subject:'mathematics', diff:'easy' },
+  { q:'The powerhouse of the cell is the...', subject:'biology', diff:'easy' },
+  { q:'The SI unit of force is:', subject:'physics', diff:'medium' },
+  { q:'The chemical symbol for Gold is:', subject:'chemistry', diff:'easy' },
+  { q:'Identify the synonym for "benevolent"', subject:'english', diff:'medium' },
+  { q:'A car travels 120 km in 2 hours. What is its speed?', subject:'mathematics', diff:'medium' },
+  { q:'What type of mirror forms a virtual upright diminished image?', subject:'physics', diff:'hard' },
+  { q:'What is the pH of a neutral solution?', subject:'chemistry', diff:'easy' },
+];
+
+// Custom questions from localStorage
+let customQuestions = JSON.parse(localStorage.getItem('qk_custom_questions') || '[]');
+let allQs = [...customQuestions, ...DEMO_QUESTIONS];
+
+function filterQuestions() {
+  const term = document.getElementById('qSearch').value.toLowerCase();
+  const subj = document.getElementById('qSubjectFilter').value;
+  const filtered = allQs.filter(q =>
+    q.q.toLowerCase().includes(term) &&
+    (subj === '' || q.subject === subj)
+  );
+  renderQTable(filtered);
+}
+
+function renderQTable(data) {
+  document.getElementById('questionsBody').innerHTML = (data || allQs).map((q, i) => `
+    <tr>
+      <td style="color:var(--text-muted)">${i+1}</td>
+      <td style="max-width:380px;font-size:0.82rem">${q.q}</td>
+      <td><span class="badge badge-blue">${q.subject}</span></td>
+      <td><span class="badge ${q.diff==='easy'?'badge-green':q.diff==='hard'?'badge-red':'badge-yellow'}">${q.diff}</span></td>
+      <td style="display:flex;gap:8px">
+        <button class="action-btn edit" onclick="editQ(${i})">Edit</button>
+        <button class="action-btn delete" onclick="deleteQ(${i})">Delete</button>
+      </td>
+    </tr>
+  `).join('');
+}
+renderQTable();
+
+function editQ(i) { showToast('Edit mode — coming soon in Firebase integration!', 'success'); }
+function deleteQ(i) {
+  if (confirm('Delete this question?')) {
+    allQs.splice(i, 1);
+    renderQTable();
+    showToast('Question deleted.', 'success');
+  }
+}
+
+// ── Save question ──
+function saveQuestion() {
+  const qText = document.getElementById('aqQuestion').value.trim();
+  const opt0 = document.getElementById('aqOpt0').value.trim();
+  const opt1 = document.getElementById('aqOpt1').value.trim();
+  const opt2 = document.getElementById('aqOpt2').value.trim();
+  const opt3 = document.getElementById('aqOpt3').value.trim();
+  const correctEl = document.querySelector('input[name="aqCorrect"]:checked');
+  const exp = document.getElementById('aqExplanation').value.trim();
+
+  if (!qText || !opt0 || !opt1 || !opt2 || !opt3 || !correctEl) {
+    showToast('Please fill all fields and select the correct answer.', 'error');
+    return;
+  }
+  const newQ = {
+    q: qText,
+    subject: document.getElementById('aqSubject').value,
+    diff: document.getElementById('aqDifficulty').value,
+    examType: document.getElementById('aqExamType').value,
+    options: ['A. '+opt0,'B. '+opt1,'C. '+opt2,'D. '+opt3],
+    answer: parseInt(correctEl.value),
+    exp: exp || 'See your textbook for explanation.'
+  };
+  customQuestions.push(newQ);
+  localStorage.setItem('qk_custom_questions', JSON.stringify(customQuestions));
+  allQs = [...customQuestions, ...DEMO_QUESTIONS];
+  clearQForm();
+  showToast('Question saved successfully! ✅', 'success');
+  showPanel('questions', document.querySelector('[onclick*=questions]'));
+  renderQTable();
+}
+
+function clearQForm() {
+  ['aqQuestion','aqOpt0','aqOpt1','aqOpt2','aqOpt3','aqExplanation'].forEach(id => document.getElementById(id).value = '');
+  const r = document.querySelector('input[name="aqCorrect"]:checked');
+  if (r) r.checked = false;
+}
+
+// ── Students ──
+function renderStudents() {
+  const term = document.getElementById('studentSearch').value.toLowerCase();
+  const users = JSON.parse(localStorage.getItem('qk_users') || '[]');
+  const filtered = users.filter(u =>
+    u.name.toLowerCase().includes(term) ||
+    u.email.toLowerCase().includes(term) ||
+    (u.state||'').toLowerCase().includes(term)
+  );
+  document.getElementById('studentCount').textContent = `${filtered.length} of ${users.length} students`;
+  document.getElementById('studentsBody').innerHTML = filtered.length === 0
+    ? '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted)">No students registered yet.</td></tr>'
+    : filtered.map(u => `
+      <tr>
+        <td><strong>${u.name}</strong></td>
+        <td style="font-size:0.8rem;color:var(--text-muted)">${u.email}</td>
+        <td><span class="badge badge-blue">${u.class||'—'}</span></td>
+        <td>${u.state||'—'}</td>
+        <td style="color:#facc15;font-weight:700">⭐ ${u.xp||0}</td>
+        <td>${(u.quizHistory||[]).length}</td>
+        <td>
+          <button class="action-btn delete" onclick="banStudent('${u.id}')">Remove</button>
+        </td>
+      </tr>
+    `).join('');
+}
+
+function banStudent(id) {
+  if (confirm('Remove this student?')) {
+    const users = JSON.parse(localStorage.getItem('qk_users') || '[]').filter(u => u.id !== id);
+    localStorage.setItem('qk_users', JSON.stringify(users));
+    renderStudents();
+    showToast('Student removed.', 'success');
+  }
+}
+
+renderStudents();
+</script>
+</body>
+</html>

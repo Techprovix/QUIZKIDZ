@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Quiz — QuizKids</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="../css/main.css"/>
+  <style>
+    body { padding-top: 0; min-height: 100vh; }
+
+    /* ── Quiz Setup Screen ── */
+    .setup-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; position: relative; z-index: 1; }
+    .setup-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-xl); padding: 48px; max-width: 560px; width: 100%; }
+    .setup-box h2 { font-size: 1.8rem; font-weight: 800; margin-bottom: 8px; }
+    .setup-box p { color: var(--text-secondary); margin-bottom: 32px; }
+    .setup-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .setup-group label { display: block; font-size: 0.78rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+    .setup-group select, .setup-group input[type="number"] { width: 100%; padding: 12px 14px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-family: var(--font-body); font-size: 0.9rem; outline: none; transition: var(--transition); }
+    .setup-group select:focus, .setup-group input:focus { border-color: var(--brand-primary); }
+    .diff-pills { display: flex; gap: 8px; }
+    .diff-pill { flex: 1; padding: 10px; text-align: center; border: 1px solid var(--border-color); border-radius: var(--radius-sm); cursor: pointer; font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); transition: var(--transition); }
+    .diff-pill.selected { border-color: var(--brand-primary); background: rgba(22,163,74,0.1); color: #4ade80; }
+    .start-btn { width: 100%; padding: 16px; background: var(--brand-primary); color: #fff; border: none; border-radius: 100px; font-size: 1.05rem; font-weight: 800; font-family: var(--font-display); cursor: pointer; transition: var(--transition); margin-top: 24px; }
+    .start-btn:hover { background: var(--brand-secondary); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(22,163,74,0.3); }
+
+    /* ── Quiz Active Screen ── */
+    .quiz-screen { display: none; min-height: 100vh; flex-direction: column; position: relative; z-index: 1; }
+    .quiz-screen.active { display: flex; }
+
+    .quiz-topbar {
+      position: sticky; top: 0; z-index: 100;
+      padding: 16px 24px;
+      background: rgba(3,7,18,0.95); backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border-color);
+      display: flex; align-items: center; gap: 20px;
+    }
+    .q-subject { font-weight: 700; font-size: 0.9rem; color: var(--text-secondary); flex-shrink: 0; }
+    .q-progress-wrap { flex: 1; }
+    .q-progress-track { height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
+    .q-progress-fill { height: 100%; background: var(--brand-primary); border-radius: 3px; transition: width 0.4s ease; }
+    .q-progress-text { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
+
+    /* Timer */
+    .q-timer {
+      display: flex; align-items: center; gap: 8px;
+      background: rgba(255,255,255,0.06); border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm); padding: 8px 16px;
+      font-family: var(--font-display); font-size: 1.1rem; font-weight: 800;
+      transition: var(--transition);
+    }
+    .q-timer.warning { background: rgba(250,204,21,0.1); border-color: rgba(250,204,21,0.4); color: #facc15; animation: pulse-timer 1s infinite; }
+    .q-timer.danger { background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.5); color: #f87171; animation: pulse-timer 0.5s infinite; }
+    @keyframes pulse-timer { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+
+    /* Question area */
+    .quiz-body { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px 24px; }
+    .question-box { width: 100%; max-width: 720px; }
+    .q-number { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 12px; }
+    .q-text { font-size: clamp(1.1rem, 2.5vw, 1.35rem); font-weight: 600; color: var(--text-primary); line-height: 1.6; margin-bottom: 32px; }
+    .q-image { width: 100%; max-height: 200px; object-fit: contain; border-radius: var(--radius-md); margin-bottom: 24px; background: rgba(255,255,255,0.05); }
+
+    /* Options */
+    .options-grid { display: flex; flex-direction: column; gap: 12px; margin-bottom: 32px; }
+    .option-btn {
+      display: flex; align-items: flex-start; gap: 16px;
+      padding: 16px 20px;
+      background: rgba(255,255,255,0.03); border: 1.5px solid var(--border-color);
+      border-radius: var(--radius-md); cursor: pointer;
+      text-align: left; font-family: var(--font-body); font-size: 0.95rem;
+      color: var(--text-primary); transition: var(--transition);
+      width: 100%;
+    }
+    .option-btn:hover:not(:disabled) { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.15); transform: translateX(4px); }
+    .option-btn .opt-letter {
+      width: 32px; height: 32px; flex-shrink: 0; border-radius: 8px;
+      background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 0.85rem; transition: var(--transition);
+    }
+    .option-btn .opt-text { padding-top: 4px; line-height: 1.5; }
+    .option-btn.selected { border-color: var(--brand-primary); background: rgba(22,163,74,0.08); }
+    .option-btn.selected .opt-letter { background: var(--brand-primary); color: #fff; }
+    .option-btn.correct { border-color: #22c55e; background: rgba(34,197,94,0.12); }
+    .option-btn.correct .opt-letter { background: #22c55e; color: #fff; }
+    .option-btn.wrong { border-color: #ef4444; background: rgba(239,68,68,0.1); }
+    .option-btn.wrong .opt-letter { background: #ef4444; color: #fff; }
+    .option-btn:disabled { cursor: not-allowed; }
+
+    /* Explanation */
+    .explanation-box { background: rgba(22,163,74,0.08); border: 1px solid rgba(22,163,74,0.25); border-radius: var(--radius-md); padding: 20px; margin-bottom: 24px; display: none; }
+    .explanation-box.show { display: block; }
+    .explanation-box h4 { font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; color: #4ade80; margin-bottom: 8px; }
+    .explanation-box p { color: var(--text-secondary); font-size: 0.9rem; line-height: 1.7; }
+
+    /* Nav buttons */
+    .q-nav { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .q-btn { padding: 12px 28px; border-radius: 100px; font-weight: 700; font-family: var(--font-display); font-size: 0.95rem; cursor: pointer; transition: var(--transition); border: 1.5px solid var(--border-color); background: transparent; color: var(--text-secondary); }
+    .q-btn:hover { border-color: rgba(255,255,255,0.2); color: var(--text-primary); }
+    .q-btn.primary { background: var(--brand-primary); color: #fff; border-color: transparent; }
+    .q-btn.primary:hover { background: var(--brand-secondary); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(22,163,74,0.3); }
+    .q-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+    .q-shortcut { font-size: 0.72rem; color: var(--text-muted); }
+
+    /* ── Results Screen ── */
+    .results-screen { display: none; min-height: 100vh; align-items: center; justify-content: center; padding: 24px; position: relative; z-index: 1; }
+    .results-screen.active { display: flex; }
+    .results-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-xl); padding: 48px; max-width: 680px; width: 100%; }
+    .result-emoji { font-size: 4rem; text-align: center; margin-bottom: 8px; }
+    .result-title { text-align: center; font-size: 1.8rem; font-weight: 800; margin-bottom: 8px; }
+    .result-sub { text-align: center; color: var(--text-secondary); margin-bottom: 32px; }
+    .score-circle {
+      width: 140px; height: 140px; border-radius: 50%;
+      border: 6px solid var(--brand-primary);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 32px;
+      background: radial-gradient(circle, rgba(22,163,74,0.1), transparent);
+    }
+    .score-circle .score-big { font-family: var(--font-display); font-size: 2.2rem; font-weight: 800; }
+    .score-circle .score-lbl { font-size: 0.75rem; color: var(--text-muted); display: block; text-align: center; }
+    .result-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-bottom: 32px; }
+    .rs-item { text-align: center; padding: 16px; background: rgba(255,255,255,0.04); border-radius: var(--radius-md); }
+    .rs-val { font-family: var(--font-display); font-size: 1.5rem; font-weight: 800; }
+    .rs-lbl { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
+    .xp-earned { text-align: center; background: rgba(250,204,21,0.08); border: 1px solid rgba(250,204,21,0.25); border-radius: var(--radius-md); padding: 16px; margin-bottom: 32px; }
+    .xp-earned strong { color: #facc15; font-size: 1.1rem; }
+    .result-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+    .result-actions a, .result-actions button { flex: 1; min-width: 140px; }
+
+    /* Review section */
+    .review-section { margin-top: 32px; }
+    .review-section h3 { font-size: 1rem; font-weight: 700; margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; }
+    .review-item { padding: 16px; border-radius: var(--radius-md); margin-bottom: 12px; border: 1px solid; }
+    .review-item.correct-review { border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.05); }
+    .review-item.wrong-review { border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.05); }
+    .review-q { font-weight: 600; font-size: 0.9rem; margin-bottom: 8px; }
+    .review-ans { font-size: 0.82rem; }
+    .review-correct { color: #4ade80; }
+    .review-wrong { color: #f87171; }
+    .review-exp { font-size: 0.82rem; color: var(--text-secondary); margin-top: 6px; }
+
+    @media (max-width: 480px) {
+      .setup-row { grid-template-columns: 1fr; }
+      .quiz-topbar { gap: 12px; padding: 12px 16px; }
+      .q-timer { padding: 6px 12px; font-size: 0.95rem; }
+      .result-stats { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="bg-canvas"><canvas id="bgCanvas"></canvas></div>
+
+<!-- SETUP SCREEN -->
+<div class="setup-screen" id="setupScreen">
+  <div class="setup-box reveal-up visible">
+    <h2>🎯 Start a Quiz</h2>
+    <p>Choose your subject, difficulty, and number of questions to begin.</p>
+
+    <div class="setup-row">
+      <div class="setup-group">
+        <label>Subject</label>
+        <select id="setupSubject">
+          <option value="mathematics">Mathematics</option>
+          <option value="english">English Language</option>
+          <option value="physics">Physics</option>
+          <option value="chemistry">Chemistry</option>
+          <option value="biology">Biology</option>
+          <option value="economics">Economics</option>
+          <option value="government">Government</option>
+          <option value="geography">Geography</option>
+          <option value="literature">Literature</option>
+          <option value="civic">Civic Education</option>
+        </select>
+      </div>
+      <div class="setup-group">
+        <label>Exam Type</label>
+        <select id="setupExamType">
+          <option value="waec">WAEC Past Q</option>
+          <option value="jamb">JAMB/UTME</option>
+          <option value="neco">NECO</option>
+          <option value="practice">General Practice</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="setup-group" style="margin-bottom:16px">
+      <label>Difficulty</label>
+      <div class="diff-pills">
+        <div class="diff-pill" onclick="selectDiff(this,'easy')">Easy</div>
+        <div class="diff-pill selected" onclick="selectDiff(this,'medium')">Medium</div>
+        <div class="diff-pill" onclick="selectDiff(this,'hard')">Hard</div>
+        <div class="diff-pill" onclick="selectDiff(this,'mixed')">Mixed</div>
+      </div>
+    </div>
+
+    <div class="setup-row">
+      <div class="setup-group">
+        <label>No. of Questions</label>
+        <select id="setupQCount">
+          <option value="10">10 questions</option>
+          <option value="20" selected>20 questions</option>
+          <option value="30">30 questions</option>
+          <option value="40">40 questions (JAMB)</option>
+        </select>
+      </div>
+      <div class="setup-group">
+        <label>Time per question (sec)</label>
+        <input type="number" id="setupTime" value="60" min="20" max="180"/>
+      </div>
+    </div>
+
+    <button class="start-btn" onclick="startQuiz()">🚀 Start Quiz Now</button>
+  </div>
+</div>
+
+<!-- QUIZ SCREEN -->
+<div class="quiz-screen" id="quizScreen">
+  <div class="quiz-topbar">
+    <div class="q-subject" id="qSubjectLabel">Mathematics</div>
+    <div class="q-progress-wrap">
+      <div class="q-progress-track"><div class="q-progress-fill" id="progressFill" style="width:0%"></div></div>
+      <div class="q-progress-text" id="progressText">Question 1 of 20</div>
+    </div>
+    <div class="q-timer" id="qTimer">
+      <span>⏱</span>
+      <span id="timerDisplay">60</span>
+    </div>
+    <button class="btn-ghost" style="padding:8px 14px;font-size:0.8rem" onclick="quitQuiz()">✕ Quit</button>
+  </div>
+
+  <div class="quiz-body">
+    <div class="question-box">
+      <div class="q-number" id="qNumber">Question 1 of 20</div>
+      <div class="q-text" id="qText">Loading question...</div>
+      <div class="options-grid" id="optionsGrid"></div>
+      <div class="explanation-box" id="explanationBox">
+        <h4>💡 Explanation</h4>
+        <p id="explanationText"></p>
+      </div>
+      <div class="q-nav">
+        <button class="q-btn" id="prevBtn" onclick="prevQ()" disabled>← Previous</button>
+        <div class="q-shortcut">Press 1-4 to select • Enter to next</div>
+        <button class="q-btn primary" id="nextBtn" onclick="nextQ()">Next Question →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- RESULTS SCREEN -->
+<div class="results-screen" id="resultsScreen">
+  <div class="results-box">
+    <div class="result-emoji" id="resultEmoji">🎉</div>
+    <h2 class="result-title" id="resultTitle">Quiz Complete!</h2>
+    <p class="result-sub" id="resultSub">Here's how you did:</p>
+
+    <div class="score-circle">
+      <div>
+        <div class="score-big" id="resultScore">0%</div>
+        <span class="score-lbl">Score</span>
+      </div>
+    </div>
+
+    <div class="result-stats">
+      <div class="rs-item">
+        <div class="rs-val" id="rsCorrect" style="color:#4ade80">0</div>
+        <div class="rs-lbl">✅ Correct</div>
+      </div>
+      <div class="rs-item">
+        <div class="rs-val" id="rsWrong" style="color:#f87171">0</div>
+        <div class="rs-lbl">❌ Wrong</div>
+      </div>
+      <div class="rs-item">
+        <div class="rs-val" id="rsTime" style="color:#facc15">0s</div>
+        <div class="rs-lbl">⏱ Avg Time</div>
+      </div>
+    </div>
+
+    <div class="xp-earned" id="xpEarned">
+      🌟 You earned <strong>+0 XP</strong>
+    </div>
+
+    <div class="result-actions">
+      <button class="btn-primary" onclick="retryQuiz()" style="padding:14px">🔄 Try Again</button>
+      <a href="dashboard.html" class="btn-ghost" style="padding:14px;text-align:center">📊 Dashboard</a>
+    </div>
+
+    <div class="review-section" id="reviewSection"></div>
+  </div>
+</div>
+
+<script src="../js/main.js"></script>
+<script>
+// ── Question Bank ──
+// A larger bank would live in a DB; this is the demo set
+const QUESTIONS = {
+  mathematics: [
+    { q: "If 2x + 3 = 11, find the value of x.", options: ["A. 3", "B. 4", "C. 5", "D. 6"], answer: 1, exp: "2x = 11 - 3 = 8, so x = 8/2 = 4." },
+    { q: "The sum of angles in a triangle is:", options: ["A. 90°", "B. 180°", "C. 270°", "D. 360°"], answer: 1, exp: "The interior angles of any triangle always sum to 180°." },
+    { q: "Simplify: 3² + 4²", options: ["A. 25", "B. 49", "C. 14", "D. 35"], answer: 0, exp: "3² = 9, 4² = 16. 9 + 16 = 25 = 5²." },
+    { q: "Find the LCM of 4, 6 and 12.", options: ["A. 12", "B. 24", "C. 48", "D. 6"], answer: 0, exp: "Multiples of 12 include 12, which is also divisible by 4 and 6. LCM = 12." },
+    { q: "A car travels 120 km in 2 hours. What is its speed?", options: ["A. 50 km/h", "B. 60 km/h", "C. 70 km/h", "D. 80 km/h"], answer: 1, exp: "Speed = Distance ÷ Time = 120 ÷ 2 = 60 km/h." },
+    { q: "What is the value of √144?", options: ["A. 11", "B. 12", "C. 13", "D. 14"], answer: 1, exp: "12 × 12 = 144, so √144 = 12." },
+    { q: "A rectangle has length 8 cm and width 5 cm. Find its area.", options: ["A. 13 cm²", "B. 26 cm²", "C. 40 cm²", "D. 80 cm²"], answer: 2, exp: "Area = length × width = 8 × 5 = 40 cm²." },
+    { q: "Solve: 5(x − 2) = 20", options: ["A. x = 4", "B. x = 6", "C. x = 8", "D. x = 10"], answer: 1, exp: "5x − 10 = 20 → 5x = 30 → x = 6." },
+    { q: "Express 0.75 as a fraction in its lowest terms.", options: ["A. 3/5", "B. 7/10", "C. 3/4", "D. 4/5"], answer: 2, exp: "0.75 = 75/100 = 3/4." },
+    { q: "The factors of 12 include:", options: ["A. 5", "B. 7", "C. 6", "D. 11"], answer: 2, exp: "Factors of 12 are 1, 2, 3, 4, 6, 12. Only 6 is in the list." },
+    { q: "If a triangle has base 10 cm and height 8 cm, find the area.", options: ["A. 18 cm²", "B. 40 cm²", "C. 80 cm²", "D. 20 cm²"], answer: 1, exp: "Area = ½ × base × height = ½ × 10 × 8 = 40 cm²." },
+    { q: "What is 15% of 200?", options: ["A. 25", "B. 30", "C. 35", "D. 40"], answer: 1, exp: "15/100 × 200 = 30." },
+    { q: "Which of these is a prime number?", options: ["A. 9", "B. 15", "C. 17", "D. 21"], answer: 2, exp: "17 has no factors other than 1 and itself. It is prime." },
+    { q: "Find the perimeter of a square with side 7 cm.", options: ["A. 14 cm", "B. 21 cm", "C. 28 cm", "D. 49 cm"], answer: 2, exp: "Perimeter = 4 × side = 4 × 7 = 28 cm." },
+    { q: "Convert 3/5 to a percentage.", options: ["A. 35%", "B. 60%", "C. 53%", "D. 30%"], answer: 1, exp: "3/5 × 100 = 60%." },
+    { q: "If the ratio of boys to girls is 3:2 and there are 25 students, how many boys are there?", options: ["A. 10", "B. 12", "C. 15", "D. 18"], answer: 2, exp: "Total parts = 5. Boys = 3/5 × 25 = 15." },
+    { q: "Evaluate: 2³ × 2²", options: ["A. 16", "B. 32", "C. 64", "D. 128"], answer: 1, exp: "2³ × 2² = 2^(3+2) = 2⁵ = 32." },
+    { q: "The mean of 4, 7, 9, 12, 13 is:", options: ["A. 7", "B. 8", "C. 9", "D. 10"], answer: 2, exp: "Sum = 45, Count = 5. Mean = 45/5 = 9." },
+    { q: "What is the reciprocal of 2/3?", options: ["A. 2/3", "B. 3/2", "C. 1/3", "D. 3/4"], answer: 1, exp: "The reciprocal flips the fraction: 3/2." },
+    { q: "A ladder 13 m long leans against a wall. The foot is 5 m from the wall. How high does it reach?", options: ["A. 8 m", "B. 10 m", "C. 12 m", "D. 11 m"], answer: 2, exp: "Using Pythagoras: h² = 13² − 5² = 169 − 25 = 144. h = 12 m." },
+  ],
+  biology: [
+    { q: "Which organelle is known as the powerhouse of the cell?", options: ["A. Nucleus", "B. Ribosome", "C. Mitochondria", "D. Golgi body"], answer: 2, exp: "Mitochondria produce ATP through cellular respiration, earning the 'powerhouse' title." },
+    { q: "What is the process by which plants make their own food?", options: ["A. Respiration", "B. Photosynthesis", "C. Transpiration", "D. Digestion"], answer: 1, exp: "Photosynthesis uses light, CO₂ and water to produce glucose and oxygen." },
+    { q: "The functional unit of the kidney is the:", options: ["A. Alveolus", "B. Nephron", "C. Neuron", "D. Villus"], answer: 1, exp: "Each kidney contains about 1 million nephrons that filter blood." },
+    { q: "Which blood type is the universal donor?", options: ["A. Type A", "B. Type B", "C. Type AB", "D. Type O"], answer: 3, exp: "Type O negative red blood cells can be given to patients of any blood type." },
+    { q: "DNA replication occurs in which phase of the cell cycle?", options: ["A. G1 phase", "B. S phase", "C. G2 phase", "D. M phase"], answer: 1, exp: "DNA replication occurs during the S (synthesis) phase of interphase." },
+    { q: "The process by which organisms produce offspring is called:", options: ["A. Respiration", "B. Nutrition", "C. Reproduction", "D. Growth"], answer: 2, exp: "Reproduction is the biological process of producing new organisms." },
+    { q: "Which gas is released during photosynthesis?", options: ["A. Carbon dioxide", "B. Nitrogen", "C. Oxygen", "D. Hydrogen"], answer: 2, exp: "Oxygen is a byproduct of the light-dependent reactions of photosynthesis." },
+    { q: "The longest bone in the human body is the:", options: ["A. Tibia", "B. Humerus", "C. Femur", "D. Radius"], answer: 2, exp: "The femur (thigh bone) is the longest and strongest bone in the body." },
+  ],
+  physics: [
+    { q: "The SI unit of force is:", options: ["A. Watt", "B. Joule", "C. Newton", "D. Pascal"], answer: 2, exp: "The Newton (N) is the SI unit of force. 1 N = 1 kg·m/s²." },
+    { q: "What is the speed of light in a vacuum?", options: ["A. 3 × 10⁶ m/s", "B. 3 × 10⁸ m/s", "C. 3 × 10¹⁰ m/s", "D. 3 × 10⁴ m/s"], answer: 1, exp: "The speed of light c ≈ 3 × 10⁸ m/s (300,000 km/s)." },
+    { q: "Which type of mirror forms a virtual, upright, diminished image?", options: ["A. Plane mirror", "B. Concave mirror", "C. Convex mirror", "D. Parabolic mirror"], answer: 2, exp: "A convex (diverging) mirror always forms a virtual, upright, and smaller image." },
+    { q: "Ohm's Law states that V = :", options: ["A. I + R", "B. I / R", "C. I × R", "D. I - R"], answer: 2, exp: "Ohm's Law: Voltage = Current × Resistance (V = IR)." },
+    { q: "The unit of electric power is:", options: ["A. Volt", "B. Ampere", "C. Ohm", "D. Watt"], answer: 3, exp: "Power (P) is measured in Watts (W). P = V × I." },
+    { q: "A body is said to be in equilibrium if the net force on it is:", options: ["A. Maximum", "B. Minimum", "C. Zero", "D. Equal to gravity"], answer: 2, exp: "Equilibrium requires zero net force (and zero net torque)." },
+  ],
+  english: [
+    { q: "Which of these is a synonym for 'benevolent'?", options: ["A. Cruel", "B. Generous", "C. Indifferent", "D. Greedy"], answer: 1, exp: "Benevolent means well-meaning and kindly; generous is the closest synonym." },
+    { q: "The word 'OBSEQUIOUS' means:", options: ["A. Bossy", "B. Stubborn", "C. Excessively compliant", "D. Aggressive"], answer: 2, exp: "Obsequious means very eager to serve or please; overly submissive." },
+    { q: "Identify the collective noun: 'A _____ of fish'", options: ["A. Pack", "B. Flock", "C. School", "D. Herd"], answer: 2, exp: "A 'school' is the collective noun used for a group of fish." },
+    { q: "Which sentence is grammatically correct?", options: ["A. Him and me went to school", "B. He and I went to school", "C. Him and I went to school", "D. He and me went to school"], answer: 1, exp: "Use subject pronouns (He, I) as the subject of a sentence." },
+    { q: "The opposite of 'ephemeral' is:", options: ["A. Temporary", "B. Fleeting", "C. Eternal", "D. Brief"], answer: 2, exp: "Ephemeral means short-lived. Its antonym is eternal or permanent." },
+  ],
+  chemistry: [
+    { q: "The chemical symbol for Gold is:", options: ["A. Go", "B. Gd", "C. Au", "D. Ag"], answer: 2, exp: "Gold's symbol Au comes from its Latin name 'Aurum'." },
+    { q: "What is the pH of a neutral solution?", options: ["A. 0", "B. 5", "C. 7", "D. 14"], answer: 2, exp: "A neutral solution (like pure water) has a pH of 7." },
+    { q: "The process of converting a liquid to a gas by heating is called:", options: ["A. Condensation", "B. Evaporation", "C. Sublimation", "D. Melting"], answer: 1, exp: "Evaporation/boiling converts a liquid to gas through heating." },
+    { q: "Sodium chloride (NaCl) is also known as:", options: ["A. Baking soda", "B. Washing soda", "C. Common salt", "D. Vinegar"], answer: 2, exp: "NaCl is the chemical formula for common table salt (sodium chloride)." },
+  ],
+};
+
+// Pad all subjects to at least 10 questions using repeats
+Object.keys(QUESTIONS).forEach(subj => {
+  const bank = QUESTIONS[subj];
+  while (bank.length < 40) bank.push(...bank.slice(0, Math.min(5, bank.length)));
+});
+
+// ── State ──
+let state = {
+  questions: [], current: 0, answers: [],
+  subject: 'mathematics', difficulty: 'medium',
+  timePerQ: 60, timer: null, timeLeft: 60,
+  startTime: null, questionTimes: []
+};
+
+function selectDiff(el, val) {
+  document.querySelectorAll('.diff-pill').forEach(p => p.classList.remove('selected'));
+  el.classList.add('selected');
+  state.difficulty = val;
+}
+
+// Pre-fill from URL params
+const params = new URLSearchParams(location.search);
+if (params.get('subject')) document.getElementById('setupSubject').value = params.get('subject');
+
+function startQuiz() {
+  state.subject = document.getElementById('setupSubject').value;
+  const count = parseInt(document.getElementById('setupQCount').value);
+  state.timePerQ = parseInt(document.getElementById('setupTime').value) || 60;
+  
+  // Get questions for the subject (shuffle and slice)
+  const bank = [...(QUESTIONS[state.subject] || QUESTIONS.mathematics)];
+  for (let i = bank.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [bank[i], bank[j]] = [bank[j], bank[i]];
+  }
+  state.questions = bank.slice(0, count);
+  state.answers = new Array(count).fill(null);
+  state.questionTimes = new Array(count).fill(0);
+  state.current = 0;
+  state.startTime = Date.now();
+
+  document.getElementById('setupScreen').style.display = 'none';
+  document.getElementById('quizScreen').classList.add('active');
+  document.getElementById('qSubjectLabel').textContent = state.subject.charAt(0).toUpperCase() + state.subject.slice(1);
+
+  renderQuestion();
+  startTimer();
+}
+
+function renderQuestion() {
+  const q = state.questions[state.current];
+  const total = state.questions.length;
+
+  // Progress
+  const pct = ((state.current) / total) * 100;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressText').textContent = `Question ${state.current+1} of ${total}`;
+  document.getElementById('qNumber').textContent = `Question ${state.current+1} of ${total}`;
+  document.getElementById('qText').textContent = q.q;
+
+  // Options
+  const letters = ['A', 'B', 'C', 'D'];
+  document.getElementById('optionsGrid').innerHTML = q.options.map((opt, i) => `
+    <button class="option-btn" id="opt${i}" onclick="selectAnswer(${i})" ${state.answers[state.current]!==null ? 'disabled' : ''}>
+      <div class="opt-letter">${letters[i]}</div>
+      <div class="opt-text">${opt.replace(/^[A-D]\. /,'')}</div>
+    </button>
+  `).join('');
+
+  // If already answered, show state
+  if (state.answers[state.current] !== null) {
+    showAnswerState(state.answers[state.current], q.answer);
+  }
+
+  // Explanation
+  const expBox = document.getElementById('explanationBox');
+  expBox.classList.toggle('show', state.answers[state.current] !== null);
+  if (state.answers[state.current] !== null) {
+    document.getElementById('explanationText').textContent = q.exp;
+  }
+
+  // Prev/Next
+  document.getElementById('prevBtn').disabled = state.current === 0;
+  document.getElementById('nextBtn').textContent = state.current === total - 1 ? '✅ Submit Quiz' : 'Next Question →';
+}
+
+function selectAnswer(idx) {
+  if (state.answers[state.current] !== null) return;
+  state.answers[state.current] = idx;
+  state.questionTimes[state.current] = state.timePerQ - state.timeLeft;
+
+  const q = state.questions[state.current];
+  showAnswerState(idx, q.answer);
+  document.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
+
+  document.getElementById('explanationBox').classList.add('show');
+  document.getElementById('explanationText').textContent = q.exp;
+  
+  stopTimer();
+}
+
+function showAnswerState(selected, correct) {
+  document.querySelectorAll('.option-btn').forEach((btn, i) => {
+    btn.classList.remove('selected', 'correct', 'wrong');
+    if (i === correct) btn.classList.add('correct');
+    else if (i === selected && selected !== correct) btn.classList.add('wrong');
+    else if (i === selected) btn.classList.add('selected');
+  });
+}
+
+function nextQ() {
+  if (state.current === state.questions.length - 1) {
+    finishQuiz(); return;
+  }
+  state.current++;
+  stopTimer();
+  startTimer();
+  renderQuestion();
+}
+
+function prevQ() {
+  if (state.current > 0) {
+    state.current--;
+    stopTimer();
+    renderQuestion();
+    // Restart timer only if not answered
+    if (state.answers[state.current] === null) startTimer();
+  }
+}
+
+function startTimer() {
+  state.timeLeft = state.timePerQ;
+  updateTimerDisplay();
+  state.timer = setInterval(() => {
+    state.timeLeft--;
+    updateTimerDisplay();
+    if (state.timeLeft <= 0) {
+      clearInterval(state.timer);
+      // Auto-skip unanswered
+      if (state.answers[state.current] === null) {
+        state.answers[state.current] = -1; // skipped
+        renderQuestion();
+        setTimeout(() => {
+          if (state.current < state.questions.length - 1) { state.current++; startTimer(); renderQuestion(); }
+          else finishQuiz();
+        }, 800);
+      }
+    }
+  }, 1000);
+}
+
+function stopTimer() { clearInterval(state.timer); }
+
+function updateTimerDisplay() {
+  const el = document.getElementById('qTimer');
+  const disp = document.getElementById('timerDisplay');
+  const t = state.timeLeft;
+  disp.textContent = t + 's';
+  el.classList.remove('warning','danger');
+  if (t <= 10) el.classList.add('danger');
+  else if (t <= 20) el.classList.add('warning');
+}
+
+function quitQuiz() {
+  if (confirm('Are you sure you want to quit this quiz? Progress will be lost.')) {
+    stopTimer();
+    document.getElementById('quizScreen').classList.remove('active');
+    document.getElementById('setupScreen').style.display = 'flex';
+  }
+}
+
+// ── Keyboard shortcuts ──
+document.addEventListener('keydown', (e) => {
+  if (!document.getElementById('quizScreen').classList.contains('active')) return;
+  if (e.key >= '1' && e.key <= '4') selectAnswer(parseInt(e.key) - 1);
+  if (e.key === 'Enter') nextQ();
+  if (e.key === 'ArrowLeft') prevQ();
+  if (e.key === 'ArrowRight') nextQ();
+});
+
+function finishQuiz() {
+  stopTimer();
+  document.getElementById('quizScreen').classList.remove('active');
+  document.getElementById('resultsScreen').classList.add('active');
+
+  const correct = state.answers.filter((a, i) => a === state.questions[i].answer).length;
+  const wrong = state.answers.filter((a, i) => a !== null && a !== -1 && a !== state.questions[i].answer).length;
+  const total = state.questions.length;
+  const pct = Math.round((correct / total) * 100);
+  const avgTime = Math.round(state.questionTimes.filter(t=>t>0).reduce((a,b)=>a+b,0) / Math.max(1, state.questionTimes.filter(t=>t>0).length));
+  const xpEarned = Math.round(pct * 0.5 + correct * 3);
+
+  // Emoji + title
+  let emoji, title, sub;
+  if (pct >= 90) { emoji='🏆'; title='Outstanding!'; sub='You absolutely crushed it!'; }
+  else if (pct >= 70) { emoji='🌟'; title='Great Job!'; sub='You performed really well.'; }
+  else if (pct >= 50) { emoji='💪'; title='Good Effort!'; sub='Keep practicing to improve.'; }
+  else { emoji='📚'; title='Keep Studying!'; sub='Review the explanations and try again.'; }
+
+  document.getElementById('resultEmoji').textContent = emoji;
+  document.getElementById('resultTitle').textContent = title;
+  document.getElementById('resultSub').textContent = sub;
+  document.getElementById('resultScore').textContent = pct + '%';
+  document.getElementById('rsCorrect').textContent = correct;
+  document.getElementById('rsWrong').textContent = wrong;
+  document.getElementById('rsTime').textContent = avgTime + 's';
+  document.getElementById('xpEarned').innerHTML = `🌟 You earned <strong>+${xpEarned} XP</strong>`;
+
+  // Score circle color
+  const circle = document.querySelector('.score-circle');
+  circle.style.borderColor = pct >= 70 ? '#22c55e' : pct >= 50 ? '#facc15' : '#ef4444';
+
+  // Save to user history
+  const user = Auth.getUser();
+  if (user) {
+    user.xp = (user.xp || 0) + xpEarned;
+    if (!user.quizHistory) user.quizHistory = [];
+    user.quizHistory.push({
+      subject: state.subject,
+      title: state.subject.charAt(0).toUpperCase() + state.subject.slice(1) + ' Quiz',
+      score: pct, correct, total,
+      date: new Date().toISOString()
+    });
+    user.streak = (user.streak || 0) + 1;
+    Auth.setUser(user);
+  }
+
+  // Review section
+  const reviewEl = document.getElementById('reviewSection');
+  reviewEl.innerHTML = `<h3>📋 Review Answers</h3>` + state.questions.map((q, i) => {
+    const userAns = state.answers[i];
+    const isCorrect = userAns === q.answer;
+    const letters = ['A', 'B', 'C', 'D'];
+    return `
+      <div class="review-item ${isCorrect ? 'correct-review' : 'wrong-review'}">
+        <div class="review-q">${i+1}. ${q.q}</div>
+        <div class="review-ans">
+          ${!isCorrect && userAns !== null && userAns !== -1 ? `<span class="review-wrong">Your answer: ${letters[userAns]}. ${q.options[userAns].replace(/^[A-D]\. /,'')}</span><br>` : ''}
+          ${userAns === -1 ? '<span class="review-wrong">⏰ Time up — not answered</span><br>' : ''}
+          <span class="review-correct">✅ Correct: ${letters[q.answer]}. ${q.options[q.answer].replace(/^[A-D]\. /,'')}</span>
+        </div>
+        <div class="review-exp">💡 ${q.exp}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function retryQuiz() {
+  document.getElementById('resultsScreen').classList.remove('active');
+  document.getElementById('setupScreen').style.display = 'flex';
+}
+</script>
+</body>
+</html>
