@@ -23,14 +23,6 @@ Nigeria's #1 quiz platform for JSS, SSS, WAEC, NECO & JAMB students.
     └── admin.html          ← Admin/teacher panel
 ```
 
-# Push to GitHub first
-
-git init
-git add .
-git commit -m "Initial QuizKids deployment"
-git remote add origin https://github.com/Techprovix/QUIZKIDZ.git
-git push -u origin main
-
 ## 📦 Tech Stack
 
 | Tech                          | Purpose               |
